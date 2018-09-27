@@ -4,11 +4,13 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+import org.opencv.core.Core;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfRect;
 import org.opencv.core.Rect;
 import org.opencv.core.Scalar;
 import org.opencv.core.Size;
+import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.objdetect.CascadeClassifier;
 import org.opencv.objdetect.Objdetect;
@@ -47,6 +49,9 @@ public class FaceDetectionController
 	@FXML
 	private CheckBox lbpClassifier;
 	
+	@FXML
+	private CheckBox maskFace;
+	
 	// a timer for acquiring the video stream
 	private ScheduledExecutorService timer;
 	// the OpenCV object that performs the video capture
@@ -57,6 +62,9 @@ public class FaceDetectionController
 	// face cascade classifier
 	private CascadeClassifier faceCascade;
 	private int absoluteFaceSize;
+	
+	// the logo to be loaded
+	private Mat logo;
 	
 	/**
 	 * Init the controller, at start time
@@ -201,9 +209,24 @@ public class FaceDetectionController
 				
 		// each rectangle in faces is a face: draw them!
 		Rect[] facesArray = faces.toArray();
-		for (int i = 0; i < facesArray.length; i++)
-			Imgproc.rectangle(frame, facesArray[i].tl(), facesArray[i].br(), new Scalar(0, 255, 0), 3);
+		for (int i = 0; i < facesArray.length; i++) {
+			if(this.maskFace.isSelected()) {
+				this.maskFace(frame, facesArray[i]);
+			} else  {
+				Imgproc.rectangle(frame, facesArray[i].tl(), facesArray[i].br(), new Scalar(0, 255, 0), 3);
+			}
+		}
 			
+			
+	}
+	
+	protected void maskFace(Mat frame ,Rect face) {
+		Mat mask = new Mat();
+		Imgproc.resize(logo, mask, face.size());
+		//Rect imgRoi = new Rect(face.x, face.y, logo.cols(), logo.rows());
+		Mat imageROI = frame.submat(face);
+		// add the logo: method #1
+		Core.addWeighted(imageROI, 1.0, mask, 0.8, 0.0, imageROI);
 	}
 	
 	/**
@@ -234,6 +257,22 @@ public class FaceDetectionController
 		this.checkboxSelection("resources/lbpcascades/lbpcascade_frontalface.xml");
 	}
 	
+	/**
+	 * The action triggered by selecting the Haar Classifier checkbox. It loads
+	 * the trained set to be used for frontal face detection.
+	 */
+	@FXML
+	protected void mashSelected(Event event)
+	{
+		// check whether the lpb checkbox is selected and deselect it
+		if (this.maskFace.isSelected()) {
+			//this.maskFace.setSelected(false);
+			if(this.logo ==  null) {
+				// read the logo only when the checkbox has been selected
+				this.logo = Imgcodecs.imread("resources/Poli.png");
+			}
+		}
+	}
 	/**
 	 * Method for loading a classifier trained set from disk
 	 * 
@@ -297,4 +336,5 @@ public class FaceDetectionController
 		this.stopAcquisition();
 	}
 	
+
 }
